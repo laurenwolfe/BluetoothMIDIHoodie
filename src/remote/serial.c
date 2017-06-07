@@ -20,6 +20,8 @@ void open_port() {
 
 		blue_fd = open(BLUE_TTY, O_RDWR | O_NOCTTY | O_NDELAY);
 
+	} else {
+		printf("Yay! Opened bluetooth serial communications: %d\n", blue_fd);
 	}
 
 	printf("Success!");
@@ -65,18 +67,22 @@ void configure() {
 
 
 void get_raw_data() {
+	if(DEBUG) {
+
+	} else {
+		/*
+
 	data_len = 0;
 
 	mkfifo(SENSOR_DATA, 0666);
 	sensor_fd = open(SENSOR_DATA, O_RDONLY);
 
-	if(DEBUG) {
-
-	} else {
 		while(data_len > 0 ||  data_len != EOF ||
 		      (data_len == -1 && (errno == EAGAIN || errno == EINTR))) {
 			data_len = read(sensor_fd, sensor_buf, BUF_SIZE);
 			send_msg(sensor_buf, data_len);
+
+		 */
 		}
 	}
 }

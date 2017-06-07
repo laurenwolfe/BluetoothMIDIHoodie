@@ -18,6 +18,10 @@
 #define SENSOR_DATA "~/tmp/midi"
 #define BUF_SIZE 255
 #define DEBUG true
+<<<<<<< HEAD
+=======
+
+>>>>>>> e31a18cbfa0487ae93e0c03db03caf70790f8a9f
 
 int blue_fd, sensor_fd, data_len;
 char sensor_buf[BUF_SIZE];
