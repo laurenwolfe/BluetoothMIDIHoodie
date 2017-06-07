@@ -79,10 +79,8 @@ void configure() {
 
 /* Write data to serial output of bluetooth module */
 void send_msg(char *msg, int len) {
-	char *msg = "Testing!\n";
-
 //	int res = write(blue_fd, msg, len);
-	int res = write(blue_fd, msg, 9);
+	int res = write(blue_fd, msg, len);
 
 	if(res < 0) {
 		fputs("send_msg() failed to write.", stderr);
@@ -96,7 +94,7 @@ int main() {
 
 	open_port();
 	configure();
-	send_msg();
+	send_msg("Testing!\n", 9);
 
 	return 0;
 }
