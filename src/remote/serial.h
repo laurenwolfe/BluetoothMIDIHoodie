@@ -16,6 +16,8 @@
 #define BLUE_TTY "/dev/ttyO4"
 #define SENSOR_DATA "~/tmp/midi"
 #define BUF_SIZE 255
+#define DEBUG true
+
 
 int blue_fd, sensor_fd, data_len;
 char sensor_buf[BUF_SIZE];
