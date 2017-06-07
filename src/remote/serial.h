@@ -11,11 +11,13 @@
 #include <termios.h> /* POSIX terminal control */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
 #define BAUDRATE B9600
 #define BLUE_TTY "/dev/ttyO4"
 #define SENSOR_DATA "~/tmp/midi"
 #define BUF_SIZE 255
+#define DEBUG true
 
 int blue_fd, sensor_fd, data_len;
 char sensor_buf[BUF_SIZE];
