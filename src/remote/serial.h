@@ -9,13 +9,20 @@
 #include <fcntl.h> /* File control */ 
 #include <errno.h>
 #include <termios.h> /* POSIX terminal control */
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define BAUDRATE B9600
 #define BLUE_TTY "/dev/ttyO4"
+#define SENSOR_DATA "~/tmp/midi"
+#define BUF_SIZE 255
 
-void configure(int);
-int open_port(void);
-int init_modem(int);
-void send_msg(int, char *, int);
+int blue_fd, sensor_fd, data_len;
+char sensor_buf[BUF_SIZE];
+
+void get_raw_data(void);
+void configure(void);
+void open_port(void);
+void send_msg(char *, int);
 
 #endif /** SERIAL_H */

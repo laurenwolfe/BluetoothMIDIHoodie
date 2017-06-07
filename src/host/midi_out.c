@@ -1,95 +1,64 @@
 #include "midi_out.h"
 
+/*
+ * Host Serial Bluetooth -> Virtual Midi Controller
+ *
+ * STEP 4: CONVERT hexadecimal midi values into audio using FluidSynth C library.
+ * 1) Get midi data from named pipe/FIFO.
+ * 2) Create Synth/Midi Player objects and process/output the data to external speakers.
+ *
+ */
+
 void create_synth() {
     settings = new_fluid_settings();
-
     fluid_settings_setstr(settings, "audio.driver", "coreaudio");
 
     synth = new_fluid_synth(settings);
-
     driver = new_fluid_audio_driver(settings, synth);
 
-	if(!settings)
-		printf("Settings NULL\n");
+	if(!settings || !synth || !driver) {
+		printf("Midi interface failed to initialize.");
+	}
 
-	if(!synth)
-		printf("Synth NULL\n");
-
-	if(!driver)
-		printf("Driver NULL\n");
-
-
-	//set soundfont
-    int font = fluid_synth_sfload(synth, SOUNDFONT, 1);
-
-	printf("font: %d\n", font);
+	//Specify a soundfont file (determines the tonal quality of the audio output)
+    fluid_synth_sfload(synth, SOUNDFONT, 1);
 }
 
-void play_note(int channel, int key, int velocity) {
-    int ret = fluid_synth_noteon(synth, channel, key, velocity);
-	printf("return 1: %d\n", ret);
-}
+// Add 0x60 to make notes in middle range of midi tones,
+// mask values to separate the status code and note bits.
+// Values:
+// - 0x90 == note sounding, 0x80 == note ended
+// - 0x0-0x11 represent notes along the Middle C scale (approximately).
+void process_input(int n_read) {
+	for(int i = 0; i < n_read; i++) {
+		int note = (buf[i] & 0x15) + SCALE;
+		int status = buf[i] & CMD_MASK;
 
-void release_note(int channel, int key) {
-    int ret = fluid_synth_noteoff(synth, channel, key);
-	printf("return 2: %d\n", ret);
+		if(status == 0x90)
+			fluid_synth_noteon(synth, CHANNEL, note, VELOCITY);
+		else
+			fluid_synth_noteoff(synth, CHANNEL, note);
+	}
 }
 
 void delete_synth() {
-    delete_fluid_audio_driver(driver);
-    delete_fluid_synth(synth);
-    delete_fluid_settings(settings);
-}
-
-void process_input() {
-	int pin, status;
-
-	for(int i = 0; i < n_read; i++) {
-		status = buf[i] & 0xF0;
-		pin = (buf[i] & 0x15) + 0x60;
-
-		printf("status: %x, pin: %x\n", status, pin);
-
-		if(status == 0x90) {
-			play_note(0, pin, 100);
-		} else {
-			release_note(0, pin);
-		}
-	}
+	delete_fluid_audio_driver(driver);
+	delete_fluid_synth(synth);
+	delete_fluid_settings(settings);
 }
 
 int main() {
     create_synth();
 
-	int ret = mkfifo(FIFO_PATH, 0666);
-	n_read = 0;
-	delay = 0;
+	mkfifo(MIDI_PATH, 0666);
+	midi_fd = open(MIDI_PATH, O_RDONLY);
 
-	//Wait 30 minutes until severing the connection
-	while(delay < 1800) {
-		if(ret < 0 && errno != EACCES) {
-			printf("Irrecoverable file I/O error: %s\n", strerror(errno));
-			return -1;
-		}
+	while((n_read = read(midi_fd, buf, BUF_SIZE)) != EOF) {
+		if(n_read == -1 && (errno == EAGAIN || errno == EINTR)) return -1;
 
-		midi_fd = open(FIFO_PATH, O_RDONLY);
-		n_read = read(midi_fd, buf, n_read);
-		close(midi_fd);
+		process_input(n_read);
+	}
 
-		//Process the chars
-		if(n_read > 0) {
-			process_input();
-			delay = 0;
-		} else {
-			sleep(1);
-			delay++;
-		}
-
-		//Create offset if buffer isn't read
-		if(n_read < BUF_SIZE || n_read < 0) {
-			n_read = 0;
-		}
-    }
-
-    return 0;
+	close(midi_fd);
+	return 0;
 }

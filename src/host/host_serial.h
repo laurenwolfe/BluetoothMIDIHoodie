@@ -10,19 +10,23 @@
 #include <termios.h> /* POSIX terminal control */
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/poll.h>
+#include <stdbool.h>
 
 #define BAUDRATE B9600
-#define BLUE_TTY "tty.raspberrypi-SerialPort"
-#define FIFO_PATH "/tmp/midi_fifo"
+//#define BLUE_TTY "/dev/cu.raspberrypi-SerialPort"
+#define BLUE_TTY "/dev/tty.BlueSMIRF-RNI-SPP"
+#define MIDI_PATH "/tmp/midi_fifo"
 #define BUF_SIZE 255
+#define NUM_PINS 12
 
-void configure(int);
-void open_port(void);
-int init_modem(int);
-void read_msg(int, char *, int);
 
 int blue_fd, midi_fd, input_len;
-char buf[BUF_SIZE];
+char sensor_buf[BUF_SIZE], midi_buf[BUF_SIZE];
+bool pin_arr[NUM_PINS];
+
+void configure(void);
+void recv_bluetooth(void);
+void translate_midi(int);
+void convert_to_midi_hex(int);
 
 #endif //BLUETOOTHMIDIHOODIE_HOST_SERIAL_H

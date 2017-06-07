@@ -1,17 +1,37 @@
 #include "serial.h"
 
+/*
+ * Sensor -> Serial
+ *
+ * STEP 2: FROM Sensor processor to home (master) computer.
+ * 1) Retrieve sensor data from named pipe (FIFO).
+ * 2) Connect via Bluetooth to a IO buffer and write data to the file.
+ */
+
+void get_raw_data() {
+	data_len = 0;
+
+	mkfifo(SENSOR_DATA, 0666);
+	sensor_fd = open(SENSOR_DATA, O_RDONLY);
+
+	while(data_len > 0 ||  data_len != EOF ||
+			(data_len == -1 && (errno == EAGAIN || errno == EINTR))) {
+		data_len = read(sensor_fd, sensor_buf, BUF_SIZE);
+		send_msg(sensor_buf, data_len);
+	}
+}
 
 /* Configure terminal mode */
-void configure(int fd) {
+void configure() {
 	struct termios old_options, options;
 	
 	// Retrieve options
-	if(tcgetattr(fd, &options) < 0) {
+	if(tcgetattr(blue_fd, &options) < 0) {
 		printf("Error from tcgetattr: %s \n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	
-	tcgetattr(fd, &old_options);
+	tcgetattr(blue_fd, &old_options);
 
 	// Configure baudrate
 	cfsetospeed(&options, BAUDRATE);
@@ -27,58 +47,46 @@ void configure(int fd) {
 	options.c_cflag &= ~CSTOPB; // 1 stop bit
 	options.c_cflag &= ~CRTSCTS; //hw flow ctl
 
-	//Line-oriented / canonical input --requires a LF char (\n)
-	options.c_lflag |= (ICANON | ECHO | ECHOE); 
-
-	//Canonical input
-	options.c_oflag |= OPOST; 
+	//raw input
+	options.c_lflag &= (ICANON | ECHO | ECHOE | ISIG);
+	options.c_oflag &= ~OPOST;
 	
 	//clean modem line and set attributes
-	//tcflush(fd, TCIFLUSH);
+	//tcflush(blue_fd, TCIFLUSH);
 
-	if(tcsetattr(fd, TCSANOW, &options) != 0) {
+	if(tcsetattr(blue_fd, TCSANOW, &options) != 0) {
 		printf("Error from tcsetattr: %s\n", strerror(errno));
-		tcsetattr(fd, TCSANOW, &old_options);
+		tcsetattr(blue_fd, TCSANOW, &old_options);
 		exit(EXIT_FAILURE);
 	}
 } 
 
-
 /* Open serial port */
-int open_port() {
-	int fd; 
+void open_port() {
+	blue_fd = open(BLUE_TTY, O_RDWR | O_NOCTTY | O_NDELAY);
 
-	fd = open(BLUE_TTY, O_RDWR | O_NOCTTY | O_NDELAY);
-
-	if(fd == -1) {
-		perror("Unable to open bluetooth communication port - ");
+	if(blue_fd == -1) {
+		printf("Unable to open bluetooth communication port: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	
-	fcntl(fd, F_SETFL, 0); // modify fd flags
-
-	return fd;
+	fcntl(blue_fd, F_SETFL, 0); // modify blue_fd flags
 }
 
-
 /* Write data to serial output of bluetooth module */
-void send_msg(int fd, char *msg, int len) {
-	if(write(fd, msg, len) < 0) {
+void send_msg(char *msg, int len) {
+	int res = write(blue_fd, msg, len);
+
+	if(res < 0) {
 		fputs("send_msg() failed to write.", stderr);
 		exit(EXIT_FAILURE);
 	}
 }
 
-
 int main() {
-	//char *msg = "Testing!\n";
+	open_port();
+	configure();
 
-	int fd = open_port();
-
-	configure(fd);
-
-	send_msg(fd, "", 9);
-	close(fd);
-
+	get_raw_data();
 	return 0;
 }
