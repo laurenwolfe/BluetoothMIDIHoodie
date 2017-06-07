@@ -9,10 +9,23 @@
  * 3) Send converted data to virtual midi controller.
  */
 
-/* Configure terminal mode */
-void configure() {
+/* Open serial port */
+void recv_bluetooth() {
+	int i = 1;
 	blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
 
+	while(i < 50 && blue_fd < 0) {
+		blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
+		printf("Unable to open bluetooth resource: %s,\n Retry # %d\n",
+		       strerror(errno), i);
+		i++;
+		sleep(2);
+	}
+	printf("Success!!!\n");
+}
+
+/* Configure terminal mode */
+void configure() {
 	struct termios old_options, options;
 
 	// Retrieve options
@@ -47,26 +60,12 @@ void configure() {
 	if(tcsetattr(blue_fd, TCSANOW, &options) != 0) {
 		printf("Error from tcsetattr: %s\n", strerror(errno));
 		tcsetattr(blue_fd, TCSANOW, &old_options);
-		//exit(EXIT_FAILURE);
 	}
 	printf("Success!!!\n");
 
 }
 
-/* Open serial port */
-void recv_bluetooth() {
-	int i = 1;
-	blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
 
-	while(i < 50 && blue_fd < 0) {
-		blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
-		printf("Unable to open bluetooth resource: %s,\n Retry # %d\n",
-		       strerror(errno), i);
-		i++;
-		sleep(2);
-	}
-	printf("Success!!!\n");
-}
 
 void translate_midi(int arr_len) {
 	int midi_res;

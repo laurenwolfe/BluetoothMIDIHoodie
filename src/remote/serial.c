@@ -8,23 +8,36 @@
  * 2) Connect via Bluetooth to a IO buffer and write data to the file.
  */
 
+void get_raw_data() {
+	data_len = 0;
+
+	mkfifo(SENSOR_DATA, 0666);
+	sensor_fd = open(SENSOR_DATA, O_RDONLY);
+
+	while(data_len > 0 ||  data_len != EOF ||
+	      (data_len == -1 && (errno == EAGAIN || errno == EINTR))) {
+		data_len = read(sensor_fd, sensor_buf, BUF_SIZE);
+		send_msg(sensor_buf, data_len);
+
+	}
+}
+
 
 /* Open serial port */
 void open_port() {
+	int j = 0;
 	blue_fd = open(BLUE_TTY, O_RDWR | O_NOCTTY | O_NDELAY);
 
 
-	while(blue_fd <= 0) {
-		printf("Unable to open bluetooth serial communications: %s\n", strerror(errno));
+	while(blue_fd <= 0 && j < 5) {
+		printf("Unable to open bluetooth serial communications: %s, round # %d\n", strerror(errno), j);
+		j++;
 		sleep(3);
-
 		blue_fd = open(BLUE_TTY, O_RDWR | O_NOCTTY | O_NDELAY);
-
-	} else {
-		printf("Yay! Opened bluetooth serial communications: %d\n", blue_fd);
 	}
 
-	printf("Success!");
+	printf("Yay! Opened bluetooth serial communications: %d\n", blue_fd);
+	sleep(3);
 }
 
 
@@ -61,35 +74,15 @@ void configure() {
 	if(tcsetattr(blue_fd, TCSANOW, &options) != 0) {
 		printf("Error from tcsetattr: %s\n", strerror(errno));
 		tcsetattr(blue_fd, TCSANOW, &old_options);
-		//exit(EXIT_FAILURE);
-	}
-} 
-
-
-void get_raw_data() {
-	if(DEBUG) {
-
-	} else {
-		/*
-
-	data_len = 0;
-
-	mkfifo(SENSOR_DATA, 0666);
-	sensor_fd = open(SENSOR_DATA, O_RDONLY);
-
-		while(data_len > 0 ||  data_len != EOF ||
-		      (data_len == -1 && (errno == EAGAIN || errno == EINTR))) {
-			data_len = read(sensor_fd, sensor_buf, BUF_SIZE);
-			send_msg(sensor_buf, data_len);
-
-		 */
-		}
 	}
 }
 
 /* Write data to serial output of bluetooth module */
 void send_msg(char *msg, int len) {
-	int res = write(blue_fd, msg, len);
+	char *msg = "Testing!\n";
+
+//	int res = write(blue_fd, msg, len);
+	int res = write(blue_fd, msg, 9);
 
 	if(res < 0) {
 		fputs("send_msg() failed to write.", stderr);
@@ -99,9 +92,11 @@ void send_msg(char *msg, int len) {
 
 int main() {
 	sleep(3);
+	//get_raw_data();
+
 	open_port();
 	configure();
+	send_msg();
 
-	get_raw_data();
 	return 0;
 }
