@@ -11,13 +11,15 @@
 
 /* Configure terminal mode */
 void configure() {
+	blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
+
 	struct termios old_options, options;
 
 	// Retrieve options
-	if(tcgetattr(blue_fd, &options) < 0) {
-		printf("Error from tcgetattr: %s \n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+//	if(tcgetattr(blue_fd, &options) < 0) {
+//		printf("Error from tcgetattr: %s \n", strerror(errno));
+//		exit(EXIT_FAILURE);
+//	}
 
 	tcgetattr(blue_fd, &old_options);
 
@@ -45,29 +47,60 @@ void configure() {
 	if(tcsetattr(blue_fd, TCSANOW, &options) != 0) {
 		printf("Error from tcsetattr: %s\n", strerror(errno));
 		tcsetattr(blue_fd, TCSANOW, &old_options);
-		exit(EXIT_FAILURE);
+		//exit(EXIT_FAILURE);
 	}
+	printf("Success!!!\n");
+
 }
 
 /* Open serial port */
 void recv_bluetooth() {
-	if((blue_fd = open(BLUE_TTY, O_RDWR | O_NOCTTY | O_NDELAY)) == -1) {
-		printf("Unable to open bluetooth communication port: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+	int i = 1;
+	blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
 
-	fcntl(blue_fd, F_SETFL, 0); // modify fd flags
+	while(i < 50 && blue_fd < 0) {
+		blue_fd = open(BLUE_TTY, O_RDONLY | O_NOCTTY | O_NDELAY);
+		printf("Unable to open bluetooth resource: %s,\n Retry # %d\n",
+		       strerror(errno), i);
+		i++;
+		sleep(2);
+	}
+	printf("Success!!!\n");
 }
 
 void translate_midi(int arr_len) {
-	if(arr_len <= 0)
+	int midi_res;
+
+	if(DEBUG) {
+		/*
+		mkfifo(MIDI_PATH, 0666);
+
+		if((midi_fd = open(MIDI_PATH, O_WRONLY | O_NOCTTY | O_NDELAY)) < 0) {
+			printf("Can't open midi fifo: %s\n", strerror(errno));
+		}
+
+		midi_res = write(midi_fd, midi_buf, 9);
+
+		if(midi_res < 0) {
+			printf("Can't write to midi fifo: %s\n", strerror(errno));
+		} else {
+			printf("success!!\n");
+		}
+		 */
+	}
+	/*
+	if(arr_len <= 0) {
+		printf("isset array is empty.\n");
 		return;
+	}
 
 	// Retrieve data from controller
 	mkfifo(MIDI_PATH, 0666);
 
-	if((midi_fd = open(MIDI_PATH, O_WRONLY)) <= 1)
+	if((midi_fd = open(MIDI_PATH, O_WRONLY | O_NOCTTY | O_NDELAY)) <= 1) {
+		printf("Can't open midi fifo: %s\n", strerror(errno));
 		return;
+	}
 
 	//convert hex values into to midi code
 	// add to audio output buffer (FIFO named pipe)
@@ -75,7 +108,8 @@ void translate_midi(int arr_len) {
 		convert_to_midi_hex(i);
 	}
 
-	write(midi_fd, pin_arr, NUM_PINS);
+	write(midi_fd, midi_buf, arr_len);
+	 */
 }
 
 //converts raw input to midi command value.
@@ -90,27 +124,53 @@ void convert_to_midi_hex(int i) {
 	pin_arr[i] = !pin_arr[i];
 }
 
+// read into sensor_buf, store current state in in pin_arr,
+// midi_buf for translated midi data
 int main() {
+	//int j = 0;
+	sleep(3);
+	printf("Launching in host_serial now!\n");
 	//sample midi data
-	sensor_buf[0] = 0x9e;
-	sensor_buf[1] = 0x8e;
-	sensor_buf[2] = 0x90;
-	sensor_buf[3] = 0x80;
-	sensor_buf[4] = 0x91;
-	sensor_buf[5] = 0x81;
-	sensor_buf[6] = 0x96;
-	sensor_buf[7] = 0x86;
+	midi_buf[0] = 0x9e;
+	midi_buf[1] = 0x8e;
+	midi_buf[2] = 0x90;
+	midi_buf[3] = 0x80;
+	midi_buf[4] = 0x91;
+	midi_buf[5] = 0x81;
+	midi_buf[6] = 0x96;
+	midi_buf[7] = 0x86;
+	midi_buf[8] = '\n';
 
 	//Set up bluetooth serial connection and receive sensor data
 	configure();
-	recv_bluetooth();
+	//recv_bluetooth();
+	//printf("Can't open midi fifo: %s\n", strerror(errno));
+
 
 	//Inject sensor data from sensor_buffer and convert into MIDI format
-	while((input_len = read(blue_fd, sensor_buf, BUF_SIZE)) != EOF) {
+	//while(j < 50) {
+		//input_len = read(blue_fd, sensor_buf, BUF_SIZE);
 
-		if(input_len > 0 || (input_len == -1 && !(errno == EAGAIN && errno == EINTR))) {
+		if(DEBUG) {
 			translate_midi(input_len);
+		} else {
+			/*
+			if(input_len > 0) {
+				// Write
+				translate_midi(input_len);
+				printf("Translated midi!\n");
+				j = 0;
+			} else {
+				printf("Can't read midi fifo: %s\n", strerror(errno));
+				j++;
+				sleep(2);
+			}
+			 */
 		}
-	}
+
+	//}
+
+	printf("Bottom of host_ser while loop!\n");
+	close(blue_fd);
 	return 0;
 }

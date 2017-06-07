@@ -18,10 +18,12 @@
 #define MIDI_PATH "/tmp/midi_fifo"
 #define BUF_SIZE 255
 #define NUM_PINS 12
+#define DEBUG true
 
 
 int blue_fd, midi_fd, input_len;
-char sensor_buf[BUF_SIZE], midi_buf[BUF_SIZE];
+char sensor_buf[BUF_SIZE] = {0};
+char midi_buf[BUF_SIZE] = {0};
 bool pin_arr[NUM_PINS];
 
 void configure(void);

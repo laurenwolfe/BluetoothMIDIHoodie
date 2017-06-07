@@ -11,4 +11,4 @@ midi_out:
 	$(CC) $(CFLAGS) -o midi_out midi_out.c $(LF)
 
 clean:
-	$(RM) *.o *~
+	$(RM) *.o *~ 

@@ -1,3 +1,12 @@
 
 .idea/
 cmake-build-debug/
+lib/
+*.dSYM/
+src/remote/serial
+src/remote/host_serial
+src/__init__.py
+src/remote/__init__.py
+src/remote/sensor/__init__.py
+src/host/midi_out
+src/host/host_serial
