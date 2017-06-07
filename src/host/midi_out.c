@@ -41,26 +41,54 @@ void delete_synth() {
     delete_fluid_settings(settings);
 }
 
+void process_input() {
+	int pin, status;
+
+	for(int i = 0; i < n_read; i++) {
+		status = buf[i] & 0xF0;
+		pin = (buf[i] & 0x15) + 0x60;
+
+		printf("status: %x, pin: %x\n", status, pin);
+
+		if(status == 0x90) {
+			play_note(0, pin, 100);
+		} else {
+			release_note(0, pin);
+		}
+	}
+}
+
 int main() {
-/*
-    RtMidiOut *midi_out = 0;
-
-    try {
-        midi_out = new RtMidiOut();
-    } catch(RtMidiError &error) {
-        error.printMessage();
-    }
-
-    delete midi_out;
-    */
-
     create_synth();
 
-    while(1) {
-        play_note(0, 60, 100);
-        sleep(2);
-        release_note(0, 60);
-	    sleep(3);
+	int ret = mkfifo(FIFO_PATH, 0666);
+	n_read = 0;
+	delay = 0;
+
+	//Wait 30 minutes until severing the connection
+	while(delay < 1800) {
+		if(ret < 0 && errno != EACCES) {
+			printf("Irrecoverable file I/O error: %s\n", strerror(errno));
+			return -1;
+		}
+
+		midi_fd = open(FIFO_PATH, O_RDONLY);
+		n_read = read(midi_fd, buf, n_read);
+		close(midi_fd);
+
+		//Process the chars
+		if(n_read > 0) {
+			process_input();
+			delay = 0;
+		} else {
+			sleep(1);
+			delay++;
+		}
+
+		//Create offset if buffer isn't read
+		if(n_read < BUF_SIZE || n_read < 0) {
+			n_read = 0;
+		}
     }
 
     return 0;

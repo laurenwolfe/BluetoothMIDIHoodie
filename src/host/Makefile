@@ -1,13 +1,14 @@
 CC=gcc
 CFLAGS= -g -Wall
-OBJECT = midi_out
-FILES = midi_out.c
 LF = `pkg-config fluidsynth --libs`
 
-all: $(OBJECT)
+all: host_serial midi_out
 
-$(OBJECT): $(OBJECT).o
-	$(CC) $(CFLAGS) -o $(OBJECT) $(FILES) $(LF)
+host_serial:
+	$(CC) $(CFLAGS) -o host_serial host_serial.c $(LF)
+
+midi_out:
+	$(CC) $(CFLAGS) -o midi_out midi_out.c $(LF)
 
 clean:
-	$(RM) $(OBJECT) *.o *~
+	$(RM) *.o *~

@@ -13,7 +13,6 @@ void configure(int fd) {
 	
 	tcgetattr(fd, &old_options);
 
-
 	// Configure baudrate
 	cfsetospeed(&options, BAUDRATE);
 	cfsetispeed(&options, BAUDRATE);
@@ -72,13 +71,13 @@ void send_msg(int fd, char *msg, int len) {
 
 
 int main() {
-	char *msg = "Testing!\n";
+	//char *msg = "Testing!\n";
 
 	int fd = open_port();
 
 	configure(fd);
 
-	send_msg(fd, msg, 9);	
+	send_msg(fd, "", 9);
 	close(fd);
 
 	return 0;
